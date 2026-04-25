@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hospitality Crisis Dispatcher</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-red: #ef4444;
+            --accent-red-hover: #dc2626;
+            --border-color: #334155;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--panel-bg);
+            width: 100%;
+            max-width: 600px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+
+        .header {
+            background-color: #020617;
+            padding: 20px;
+            border-bottom: 2px solid var(--accent-red);
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--accent-red);
+        }
+
+        .content {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        textarea {
+            width: 100%;
+            height: 100px;
+            background-color: #0f172a;
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 1rem;
+            resize: vertical;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent-red);
+        }
+
+        .gps-dummy {
+            display: flex;
+            gap: 12px;
+        }
+
+        .gps-dummy input {
+            flex: 1;
+            background-color: #0f172a;
+            color: var(--text-muted);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 8px;
+            font-size: 0.85rem;
+        }
+
+        button {
+            background-color: var(--accent-red);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        button:hover {
+            background-color: var(--accent-red-hover);
+        }
+
+        button:disabled {
+            background-color: var(--border-color);
+            cursor: not-allowed;
+        }
+
+        .output-section {
+            margin-top: 10px;
+            background-color: #020617;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            display: none; /* Hidden by default */
+        }
+
+        pre {
+            color: #34d399;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        /* Simple loading spinner text */
+        .loading {
+            text-align: center;
+            color: var(--accent-red);
+            font-weight: bold;
+            display: none;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>🚨 Crisis Dispatcher</h1>
+        </div>
+        
+        <div class="content">
+            <div class="input-group">
+                <label>Current Location (Dummy Data)</label>
+                <div class="gps-dummy">
+                    <input type="text" id="lat" value="18.9681978" title="Latitude">
+                    <input type="text" id="lon" value="72.8072647" title="Longitude">
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label for="description">Emergency Situation Report</label>
+                <textarea id="description" placeholder="E.g., Massive grease fire in the main kitchen of the Grand Hotel. Three chefs have severe burns."></textarea>
+            </div>
+
+            <button id="dispatchBtn" onclick="sendTriageRequest()">Analyze & Dispatch Vectors</button>
+            
+            <div id="loadingIndicator" class="loading">Analyzing Crisis Parameters via AI...</div>
+
+            <div class="output-section" id="outputSection">
+                <label style="color: white; margin-bottom: 8px; display: block;">Structured API Response:</label>
+                <pre id="jsonOutput"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function sendTriageRequest() {
+            const btn = document.getElementById('dispatchBtn');
+            const loading = document.getElementById('loadingIndicator');
+            const outputSection = document.getElementById('outputSection');
+            const jsonOutput = document.getElementById('jsonOutput');
+            const description = document.getElementById('description').value;
+
+            // Basic validation
+            if (!description.trim()) {
+                alert("Please enter a situation description.");
+                return;
+            }
+
+            // Get dummy coordinates
+            const lat = parseFloat(document.getElementById('lat').value);
+            const lon = parseFloat(document.getElementById('lon').value);
+
+            // UI State updates (Loading...)
+            btn.disabled = true;
+            loading.style.display = "block";
+            outputSection.style.display = "none";
+            jsonOutput.innerText = "";
+
+            try {
+                // Call your local FastAPI server
+                const response = await fetch('http://127.0.0.1:8000/api/v1/triage', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        latitude: lat,
+                        longitude: lon,
+                        description: description
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server Error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                // Show the successful JSON response
+                jsonOutput.innerText = JSON.stringify(data, null, 2);
+                outputSection.style.display = "block";
+
+            } catch (error) {
+                // Handle errors (e.g., FastAPI is not running)
+                jsonOutput.innerText = `Error connecting to backend:\n\n${error.message}\n\nMake sure your FastAPI server is running on http://127.0.0.1:8000!`;
+                jsonOutput.style.color = "#ef4444"; // red error text
+                outputSection.style.display = "block";
+            } finally {
+                // Reset UI State
+                btn.disabled = false;
+                loading.style.display = "none";
+            }
+        }
+    </script>
+</body>
+</html>
