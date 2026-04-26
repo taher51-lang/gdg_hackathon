@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Agency Emergency Coordination</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <!-- Leaflet CSS for Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+
+    <style>
+        :root {
+            /* Material 3 Light Mode Tokens */
+            --md-sys-color-background: #FAFAFA;
+            --md-sys-color-surface: #FFFFFF;
+            --md-sys-color-surface-variant: #E2E8F0;
+            --md-sys-color-on-surface: #1E293B;
+            --md-sys-color-on-surface-variant: #475569;
+            --md-sys-color-primary: #0F172A;
+            --md-sys-color-on-primary: #FFFFFF;
+
+            --critical-red: #DC2626;
+            /* Priority > 8 */
+            --critical-red-bg: #FEF2F2;
+            --urgent-amber: #D97706;
+            /* Priority 5-7 */
+            --urgent-amber-bg: #FFFBEB;
+            --routine-green: #059669;
+            /* Priority < 5 */
+            --routine-green-bg: #ECFDF5;
+
+            --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+            --shadow-3: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-float: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+            --border-radius-sm: 8px;
+            --border-radius-md: 12px;
+            --border-radius-lg: 16px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--md-sys-color-background);
+            color: var(--md-sys-color-on-surface);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Top Navigation */
+        .top-nav {
+            height: 64px;
+            background-color: var(--md-sys-color-surface);
+            border-bottom: 1px solid var(--md-sys-color-surface-variant);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            z-index: 1000;
+            box-shadow: var(--shadow-1);
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .nav-brand h1 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--md-sys-color-primary);
+        }
+
+        .agency-tabs {
+            display: flex;
+            gap: 12px;
+        }
+
+        .agency-tab {
+            padding: 8px 16px;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid var(--md-sys-color-surface-variant);
+            background-color: var(--md-sys-color-surface);
+            transition: background-color 0.2s;
+        }
+
+        .agency-tab:hover {
+            background-color: #F8FAFC;
+        }
+
+        .agency-tab.police .status-dot {
+            background-color: var(--routine-green);
+        }
+
+        .agency-tab.ems .status-dot {
+            background-color: var(--critical-red);
+        }
+
+        .agency-tab.fire .status-dot {
+            background-color: var(--urgent-amber);
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: var(--md-sys-color-on-surface-variant);
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8);
+            position: relative;
+        }
+
+        .agency-tab.police .status-dot::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            border-radius: 50%;
+            border: 1px solid var(--routine-green);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 0.8;
+            }
+
+            100% {
+                transform: scale(2);
+                opacity: 0;
+            }
+        }
+
+        .agency-tab-text {
+            color: var(--md-sys-color-on-surface);
+        }
+
+        /* Main Workspace */
+        .workspace {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Left Split: Map View */
+        .map-container {
+            flex: 1;
+            position: relative;
+            background-color: #E2E8F0;
+            /* Fallback map texture */
+            display: flex;
+            flex-direction: column;
+        }
+
+        #map {
+            flex: 1;
+            width: 100%;
+            z-index: 1;
+        }
+
+        /* Floating Gemini Summary Box */
+        .gemini-summary-box {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            width: 400px;
+            background-color: var(--md-sys-color-surface);
+            border-radius: var(--border-radius-md);
+            box-shadow: var(--shadow-float);
+            z-index: 1000;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transform: translateY(-20px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            pointer-events: none;
+        }
+
+        .gemini-summary-box.active {
+            transform: translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .gemini-header {
+            background: linear-gradient(135deg, #F0F4FF 0%, #FFFFFF 100%);
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--md-sys-color-surface-variant);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .gemini-header h2 {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #1A73E8;
+            /* Gemini Blue */
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .gemini-content {
+            padding: 18px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            color: var(--md-sys-color-on-surface);
+        }
+
+        /* AI Priority Feed Sidebar */
+        .sidebar {
+            width: 460px;
+            background-color: var(--md-sys-color-background);
+            border-left: 1px solid var(--md-sys-color-surface-variant);
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+            box-shadow: -4px 0 15px rgba(0, 0, 0, 0.03);
+        }
+
+        .sidebar-header {
+            padding: 24px;
+            padding-bottom: 16px;
+            background-color: transparent;
+        }
+
+        .sidebar-header h2 {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--md-sys-color-primary);
+            letter-spacing: -0.02em;
+        }
+
+        .feed-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 24px 24px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* Incident Card (Material 3 style) */
+        .incident-card {
+            background-color: var(--md-sys-color-surface);
+            border-radius: var(--border-radius-md);
+            padding: 18px;
+            box-shadow: var(--shadow-1);
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid var(--md-sys-color-surface-variant);
+        }
+
+        .incident-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-3);
+        }
+
+        .incident-card.critical {
+            border-left: 5px solid var(--critical-red);
+            background: linear-gradient(to right, rgba(254, 242, 242, 0.6), var(--md-sys-color-surface) 15%);
+        }
+
+        .incident-card.urgent {
+            border-left: 5px solid var(--urgent-amber);
+            background: linear-gradient(to right, rgba(255, 251, 235, 0.6), var(--md-sys-color-surface) 15%);
+        }
+
+        .incident-card.routine {
+            border-left: 5px solid var(--routine-green);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .triage-score-container {
+            text-align: right;
+            background: #F8FAFC;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid #E2E8F0;
+        }
+
+        .incident-card.critical .triage-score-container {
+            background: #FEF2F2;
+            border-color: #FCA5A5;
+            color: var(--critical-red);
+        }
+
+        .incident-card.urgent .triage-score-container {
+            background: #FFFBEB;
+            border-color: #FCD34D;
+            color: var(--urgent-amber);
+        }
+
+        .incident-card.routine .triage-score-container {
+            background: #ECFDF5;
+            border-color: #6EE7B7;
+            color: var(--routine-green);
+        }
+
+        .triage-score {
+            font-weight: 800;
+            font-size: 1.5rem;
+            line-height: 1;
+        }
+
+        .triage-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            opacity: 0.8;
+            margin-top: 4px;
+            display: block;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: var(--md-sys-color-primary);
+            padding-right: 12px;
+        }
+
+        .card-meta {
+            font-size: 0.85rem;
+            color: var(--md-sys-color-on-surface-variant);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .card-meta span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .btn-primary {
+            background-color: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
+            width: 100%;
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            border: 1px solid var(--md-sys-color-surface-variant);
+            color: var(--md-sys-color-on-surface);
+        }
+
+        .btn-outline:hover {
+            background-color: #F1F5F9;
+        }
+
+        /* SVG Icons utility */
+        .icon-sm {
+            width: 16px;
+            height: 16px;
+        }
+
+        .icon-md {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+
+        /* Multimodal Input Section */
+        .input-panel {
+            padding: 24px;
+            background-color: var(--md-sys-color-surface);
+            border-top: 1px solid var(--md-sys-color-surface-variant);
+            box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.02);
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 16px;
+        }
+
+        .input-group textarea {
+            width: 100%;
+            border: 2px solid var(--md-sys-color-surface-variant);
+            border-radius: var(--border-radius-sm);
+            padding: 14px;
+            padding-right: 54px;
+            font-size: 0.95rem;
+            resize: none;
+            height: 90px;
+            background-color: var(--md-sys-color-background);
+            transition: all 0.2s;
+            color: var(--md-sys-color-primary);
+        }
+
+        .input-group textarea:focus {
+            outline: none;
+            border-color: #1A73E8;
+            box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+        }
+
+        .mic-btn {
+            position: absolute;
+            right: 12px;
+            bottom: 14px;
+            background: #FEF2F2;
+            border: none;
+            color: #DC2626;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .mic-btn:hover {
+            background-color: #FCA5A5;
+            transform: scale(1.05);
+        }
+
+        .ai-highlight {
+            background-color: #FEF08A;
+            color: #854D0E;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #CBD5E1;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94A3B8;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Top Navigation -->
+    <header class="top-nav">
+        <div class="nav-brand">
+            <svg class="icon-md" viewBox="0 0 24 24" fill="var(--critical-red)">
+                <path
+                    d="M12 2L2 7l10 5 10-5-10-5zm0 7.5l-6-3v5.1l6 3 6-3v-5.1l-6 3zM2 17l10 5 10-5v-5.1l-10 5-10-5V17z" />
+            </svg>
+            <h1>GSC Emergency Dispatch</h1>
+        </div>
+
+        <div class="agency-tabs">
+            <div class="agency-tab police">
+                <div class="status-dot"></div>
+                <span class="agency-tab-text">Police: Active</span>
+            </div>
+            <div class="agency-tab ems">
+                <div class="status-dot"></div>
+                <span class="agency-tab-text">EMS: Busy</span>
+            </div>
+            <div class="agency-tab fire">
+                <div class="status-dot"></div>
+                <span class="agency-tab-text">Fire: On-Call</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="workspace">
+
+        <!-- Left Panel: Map & Overlays -->
+        <section class="map-container">
+            <!-- The Map -->
+            <div id="map"></div>
+
+            <!-- Floating Gemini AI Summary -->
+            <div class="gemini-summary-box" id="geminiSummary">
+                <div class="gemini-header">
+                    <h2>
+                        <svg class="icon-sm" viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14.5c-3.04 0-5.5-2.46-5.5-5.5s2.46-5.5 5.5-5.5 5.5 2.46 5.5 5.5-2.46 5.5-5.5 5.5zm0-9.5c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z" />
+                        </svg>
+                        Gemini Priority Extraction
+                    </h2>
+                    <button class="btn btn-outline" style="padding: 4px 10px; font-size: 0.75rem;"
+                        onclick="toggleSpeech()">
+                        🔊 Read Aloud
+                    </button>
+                </div>
+                <div class="gemini-content" id="geminiText">
+                    <!-- Dynamic text injected here -->
+                </div>
+
+                <!-- Hospital Section -->
+                <div class="hospital-section" id="hospitalSection"
+                    style="display: none; border-top: 1px solid var(--md-sys-color-surface-variant);">
+                    <div class="gemini-header" style="background: linear-gradient(135deg, #ECFDF5 0%, #FFFFFF 100%);">
+                        <h2 style="color: #059669;">
+                            <svg class="icon-sm" viewBox="0 0 24 24" fill="currentColor">
+                                <path
+                                    d="M19 3H5c-1.1 0-1.99.9-1.99 2L3 19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 11h-4v4h-4v-4H6v-4h4V6h4v4h4v4z" />
+                            </svg>
+                            Nearest Hospitals
+                        </h2>
+                    </div>
+                    <div class="gemini-content" id="hospitalList"
+                        style="padding-top: 12px; display: flex; flex-direction: column; gap: 10px;">
+                        <!-- Dynamic text injected here -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Panel: AI Priority Feed -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>AI Priority Feed</h2>
+            </div>
+
+            <div class="feed-list" id="feedList">
+                <!-- Cards injected via JS -->
+            </div>
+
+            <!-- Manual/Multimodal Input Module -->
+            <div class="input-panel">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 style="font-size: 0.95rem; font-weight: 600; color: var(--md-sys-color-primary);">Report
+                        Incident (Manual Override)</h3>
+                </div>
+                <div class="input-group">
+                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                        <input type="number" id="incidentLat" placeholder="Latitude (e.g. 18.968)" step="0.0001"
+                            style="flex: 1; border: 2px solid var(--md-sys-color-surface-variant); border-radius: var(--border-radius-sm); padding: 10px 14px; font-size: 0.9rem; background-color: var(--md-sys-color-background); color: var(--md-sys-color-primary); outline: none; transition: all 0.2s;"
+                            onfocus="this.style.borderColor='#1A73E8'"
+                            onblur="this.style.borderColor='var(--md-sys-color-surface-variant)'">
+                        <input type="number" id="incidentLng" placeholder="Longitude (e.g. 72.827)" step="0.0001"
+                            style="flex: 1; border: 2px solid var(--md-sys-color-surface-variant); border-radius: var(--border-radius-sm); padding: 10px 14px; font-size: 0.9rem; background-color: var(--md-sys-color-background); color: var(--md-sys-color-primary); outline: none; transition: all 0.2s;"
+                            onfocus="this.style.borderColor='#1A73E8'"
+                            onblur="this.style.borderColor='var(--md-sys-color-surface-variant)'">
+                        āā
+                    </div>
+                    <div style="position: relative;">
+                        <textarea id="incidentInput"
+                            placeholder="Press the mic icon to transcribe live 112 emergency call..."></textarea>
+                        <button class="mic-btn" id="micBtn" title="Start voice transcription" āā
+                            onclick="startVoiceTranscription()">āā
+                            <svg class="icon-md" viewBox="0 0 24 24" fill="currentColor">
+                                <path
+                                    d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <button class="btn btn-primary" id="analyzeBtn" onclick="simulateNewReport()">Analyze Incident via
+                    AI</button>
+            </div>
+        </aside>
+
+    </main>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script>
+        // Mock Data for "Fail-Safe Logic" / Initial Load
+        const mockIncidents = [
+            {
+                id: "INC-102",
+                title: "Massive Structural Fire",
+                location: "Grand Hotel, North Wing",
+                triageScore: 9.8,
+                agency: "Fire + EMS",
+                time: "1 min ago",
+                details: "Multiple floors ablaze. Potential structural collapse. 3 civilians trapped on top floor requiring immediate extraction. Heavy smoke.",
+                lat: 18.968,
+                lng: 72.827
+            },
+            {
+                id: "INC-103",
+                title: "Armed Robbery in Progress",
+                location: "Central Bank, 5th Ave",
+                triageScore: 8.5,
+                agency: "Police",
+                time: "3 mins ago",
+                details: "Suspects armed with AR weapons, actively engaging security. Customers trapped inside the lobby. Requesting tactical unit.",
+                lat: 18.955,
+                lng: 72.810
+            },
+            {
+                id: "INC-104",
+                title: "Multi-vehicle collision",
+                location: "Highway 42, Mile marker 12",
+                triageScore: 6.2,
+                agency: "EMS + Police",
+                time: "10 mins ago",
+                details: "3 cars involved in high-speed collision. Traffic completely blocked. Paramedics assessing suspected minor lacerations.",
+                lat: 18.960,
+                lng: 72.835
+            },
+            {
+                id: "INC-105",
+                title: "Noise Complaint / Disturbance",
+                location: "142 Suburbia Lane",
+                triageScore: 2.1,
+                agency: "Police",
+                time: "25 mins ago",
+                details: "Loud music playing past midnight. Non-violent. Routine patrol approach advised.",
+                lat: 18.975,
+                lng: 72.820
+            }
+        ];
+
+        const mockHospitals = [
+            { id: "H-1", name: "City General Hospital", lat: 18.960, lng: 72.820, beds: { icu: 4, general: 12 } },
+            { id: "H-2", name: "St. Mary's Medical Center", lat: 18.972, lng: 72.835, beds: { icu: 0, general: 5 } },
+            { id: "H-3", name: "Metro Trauma Center", lat: 18.950, lng: 72.815, beds: { icu: 8, general: 24 } },
+            { id: "H-4", name: "Sunrise Clinic", lat: 18.965, lng: 72.840, beds: { icu: 1, general: 8 } }
+        ];
+
+        // Haversine formula (approx) to get distance in km
+        function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+            var R = 6371; // Radius of the earth in km
+            var dLat = (lat2 - lat1) * (Math.PI / 180);
+            var dLon = (lon2 - lon1) * (Math.PI / 180);
+            var a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            var d = R * c;
+            return d;
+        }
+
+        // --- MAP INITIALIZATION ---
+        const map = L.map('map', { zoomControl: false }).setView([18.965, 72.822], 13);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; CartoDB & OSM contributors',
+            subdomains: 'abcd',
+            maxZoom: 20
+        }).addTo(map);
+
+        L.control.zoom({ position: 'bottomleft' }).addTo(map);
+
+        // Custom High-Contrast Map Markers (SVG based)
+        function createMarkerIcon(triageScore) {
+            let color = '#059669'; // green
+            if (triageScore > 8) color = '#DC2626'; // red
+            else if (triageScore >= 5) color = '#D97706'; // amber
+
+            const svg = `
+            <svg width="36" height="46" viewBox="0 0 32 40" xmlns="http://www.w3.org/2000/svg">
+                <path d="M16 0C7.163 0 0 7.163 0 16c0 10.667 16 24 16 24s16-13.333 16-24C32 7.163 24.837 0 16 0z" fill="${color}" stroke="#FFFFFF" stroke-width="2"/>
+                <circle cx="16" cy="16" r="6" fill="#FFFFFF"/>
+            </svg>`;
+            return L.divIcon({
+                className: 'custom-div-icon',
+                html: svg,
+                iconSize: [36, 46],
+                iconAnchor: [18, 46]
+            });
+        }
+
+        const mapMarkers = {}; // Keep track of markers
+
+        // --- UI RENDERING ---
+        function getSeverityClass(score) {
+            if (score > 8) return 'critical';
+            if (score >= 5) return 'urgent';
+            return 'routine';
+        }
+
+        function renderFeed() {
+            const list = document.getElementById('feedList');
+            list.innerHTML = '';
+
+            // Sort by triage score descending (highest priority first)
+            const sorted = [...mockIncidents].sort((a, b) => b.triageScore - a.triageScore);
+
+            sorted.forEach(incident => {
+                const sevClass = getSeverityClass(incident.triageScore);
+
+                // Render Card
+                const card = document.createElement('div');
+                card.className = `incident-card ${sevClass}`;
+                card.onclick = () => selectIncident(incident);
+
+                card.innerHTML = `
+                    <div class="card-header">
+                        <div style="flex:1;">
+                            <h3 class="card-title">${incident.title}</h3>
+                            <div class="card-meta">
+                                <span>
+                                    <svg class="icon-sm" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                                    ${incident.location}
+                                </span>
+                                <span>
+                                    <svg class="icon-sm" viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/><path d="M12.5 7H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+                                    ${incident.time} &nbsp;&bull;&nbsp; Agency: <strong>${incident.agency}</strong>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="triage-score-container">
+                            <div class="triage-score">${incident.triageScore.toFixed(1)}</div>
+                            <span class="triage-label">Triage Priority</span>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="event.stopPropagation(); alert('Prefilling EDXL-DE form for ${incident.id}\\n\\nAuto-Pushing to Nearest Unit!')">
+                        Dispatch Nearest Unit
+                    </button>
+                `;
+                list.appendChild(card);
+
+                // Add to Map
+                if (!mapMarkers[incident.id]) {
+                    const marker = L.marker([incident.lat, incident.lng], {
+                        icon: createMarkerIcon(incident.triageScore)
+                    }).addTo(map);
+                    marker.bindPopup(`
+                        <div style="font-family:'Inter',sans-serif; text-align:center;">
+                            <b>${incident.title}</b><br>
+                            <span style="color:#64748B; font-size:0.8rem;">Priority: ${incident.triageScore} / 10</span>
+                        </div>
+                    `);
+                    mapMarkers[incident.id] = marker;
+                }
+            });
+        }
+
+        // Action when clicking an incident card
+        function selectIncident(incident) {
+            // Pan Map
+            map.flyTo([incident.lat, incident.lng], 16, { animate: true, duration: 1.2 });
+
+            // Show Gemini Summary
+            const popup = document.getElementById('geminiSummary');
+            popup.classList.remove('active'); // trigger reflow for animation
+            void popup.offsetWidth;
+            popup.classList.add('active');
+
+            // Simulate Gemini output with exact formatting requested ("2-sentence string")
+            // Highlight keywords using word boundaries to prevent bugs like "cARs" -> "cweapons"
+            let extractedSummary = `Incident at ${incident.location} involves ${incident.details}`
+                .replace(/\b(trapped)\b/gi, '<span class="ai-highlight">$1</span>')
+                .replace(/\b(ablaze|fire|smoke|burning)\b/gi, '<span class="ai-highlight">$1</span>')
+                .replace(/\b(weapon|weapons|ar|armed|gun|guns|robbery)\b/gi, '<span class="ai-highlight">$1</span>')
+                .replace(/\b(injuries|injury|unconscious|bleeding|blood)\b/gi, '<span class="ai-highlight">$1</span>');
+
+            const sentence2 = incident.triageScore >= 8
+                ? "Immediate extraction and full multi-agency dispatch coordinates are highly recommended."
+                : (incident.triageScore >= 5 ? "Situation requires urgent secondary assessment." : "Routine follow-up is sufficient. No critical life-threats detected.");
+
+            document.getElementById('geminiText').innerHTML = `
+                <p><strong>Incident ${incident.id}:</strong> ${extractedSummary}</p>
+                <p style="margin-top: 10px; font-weight: 600;">${sentence2}</p>
+            `;
+
+            // Hospital Logic: Show if medical/fire or high triage
+            const hospSection = document.getElementById('hospitalSection');
+            const hospList = document.getElementById('hospitalList');
+
+            if (incident.agency.includes('EMS') || incident.agency.includes('Fire') || incident.triageScore >= 6) {
+                hospSection.style.display = 'block';
+
+                // Calculate distances and sort
+                const nearbyHospitals = mockHospitals.map(h => {
+                    const dist = getDistanceFromLatLonInKm(incident.lat, incident.lng, h.lat, h.lng);
+                    return { ...h, distance: dist };
+                }).sort((a, b) => a.distance - b.distance).slice(0, 3); // top 3
+
+                hospList.innerHTML = nearbyHospitals.map(h => `
+                    <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <strong style="color: var(--md-sys-color-primary); font-size: 0.9rem;">${h.name}</strong>
+                            <span style="font-size: 0.8rem; color: #64748B;">${h.distance.toFixed(1)} km</span>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <span style="font-size: 0.8rem; background: ${h.beds.icu > 0 ? '#ECFDF5' : '#FEF2F2'}; color: ${h.beds.icu > 0 ? '#059669' : '#DC2626'}; border-radius: 4px; padding: 2px 6px; font-weight: 600;">
+                                ICU Beds: ${h.beds.icu}
+                            </span>
+                            <span style="font-size: 0.8rem; background: #F0F4FF; color: #1A73E8; border-radius: 4px; padding: 2px 6px; font-weight: 600;">
+                                General: ${h.beds.general}
+                            </span>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                hospSection.style.display = 'none';
+            }
+
+            // Stop any ongoing TTS when a new incident is clicked
+            window.speechSynthesis.cancel();
+
+            // Auto open marker popup
+            mapMarkers[incident.id].openPopup();
+        }
+
+        // --- VOICE RECOGNITION (STT) ---
+        function startVoiceTranscription() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert("Speech Recognition API is not supported in this browser. Please use Chrome/Edge.");
+                return;
+            }
+
+            const recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+
+            const inputField = document.getElementById('incidentInput');
+            const micBtn = document.getElementById('micBtn');
+
+            // Visual feedback
+            const originalColor = micBtn.style.color || '#DC2626';
+            micBtn.style.color = '#1A73E8'; // Blue while listening
+
+            // Backup current text
+            const currentText = inputField.value;
+
+            recognition.onresult = function (event) {
+                let interimTranscript = '';
+                let finalTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript;
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
+                }
+
+                inputField.value = currentText + (currentText ? ' ' : '') + finalTranscript + interimTranscript;
+            };
+
+            recognition.onerror = function (event) {
+                console.error("Speech recognition error", event.error);
+                micBtn.style.color = originalColor;
+            };
+
+            recognition.onend = function () {
+                micBtn.style.color = originalColor;
+            };
+
+            recognition.start();
+        }
+
+        // --- TTS CONTROLS ---
+        function toggleSpeech() {
+            const rawText = document.getElementById('geminiText').innerText;
+            if (!rawText) return;
+
+            if (window.speechSynthesis.speaking) {
+                window.speechSynthesis.cancel();
+            } else {
+                const utterance = new SpeechSynthesisUtterance(rawText);
+                utterance.rate = 1.15; // slightly faster for urgency
+                utterance.pitch = 1.0;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        // --- DYNAMIC AI INGESTION SIMULATION ---
+        async function simulateNewReport() {
+            const inputField = document.getElementById('incidentInput');
+            const latField = document.getElementById('incidentLat');
+            const lngField = document.getElementById('incidentLng');
+            const text = inputField.value;
+            const inputLat = latField ? parseFloat(latField.value) : NaN;
+            const inputLng = lngField ? parseFloat(lngField.value) : NaN;
+
+            if (!text.trim()) {
+                alert("Please dictate or type a report first.");
+                return;
+            }
+
+            const btn = document.getElementById('analyzeBtn');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = "Geocoding & Analyzing...";
+            }
+
+            // Simulate parsing text
+            const lowerText = text.toLowerCase();
+            const isMedical = lowerText.includes('unconscious') || lowerText.includes('bleed') || lowerText.includes('injur');
+            const isFire = lowerText.includes('smoke') || lowerText.includes('fire');
+            const isPolice = lowerText.includes('weapon') || lowerText.includes('gun') || lowerText.includes('rob') || lowerText.includes('police') || lowerText.includes('traffic') || lowerText.includes('fender');
+
+            let agency = "Police";
+            if (isMedical && isFire) agency = "Fire + EMS";
+            else if (isMedical) agency = "EMS";
+            else if (isFire) agency = "Fire";
+            else if (isPolice) agency = "Police";
+
+            let score = 5.0; // default amber
+            if (isMedical || isFire) score = 8.8 + Math.random();
+            else if (isPolice && lowerText.includes('weapon')) score = 9.0;
+            else if (isPolice && lowerText.includes('traffic')) score = 6.5;
+            else if (text.length > 50) score = 6.0;
+
+            let lat = 18.968 + (Math.random() * 0.04 - 0.02); // Default Mumbai
+            let lng = 72.827 + (Math.random() * 0.04 - 0.02);
+            let locName = "Mumbai / Local Area";
+
+            // If an explicit lat/lng was provided (simulating an SOS signal coordinates)
+            if (!isNaN(inputLat) && !isNaN(inputLng)) {
+                lat = inputLat;
+                lng = inputLng;
+                locName = `SOS Signal (Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)})`;
+            } else {
+                // Heuristic parsing if location box was empty
+                if (lowerText.includes('ahmedabad') || lowerText.includes('nehru nagar')) {
+                    lat = 23.0225 + (Math.random() * 0.02 - 0.01);
+                    lng = 72.5714 + (Math.random() * 0.02 - 0.01);
+                    locName = lowerText.includes('nehru nagar') ? "Nehru Nagar, Ahmedabad" : "Ahmedabad City";
+                } else if (lowerText.includes('delhi')) {
+                    lat = 28.6139 + (Math.random() * 0.02 - 0.01);
+                    lng = 77.2090 + (Math.random() * 0.02 - 0.01);
+                    locName = "New Delhi Area";
+                } else if (lowerText.includes('pune')) {
+                    lat = 18.5204 + (Math.random() * 0.02 - 0.01);
+                    lng = 73.8567 + (Math.random() * 0.02 - 0.01);
+                    locName = "Pune City";
+                } else if (lowerText.includes('surat')) {
+                    lat = 21.1702 + (Math.random() * 0.02 - 0.01);
+                    lng = 72.8311 + (Math.random() * 0.02 - 0.01);
+                    locName = "Surat City";
+                } else if (lowerText.includes('bangalore') || lowerText.includes('bengaluru')) {
+                    lat = 12.9716 + (Math.random() * 0.02 - 0.01);
+                    lng = 77.5946 + (Math.random() * 0.02 - 0.01);
+                    locName = "Bangalore";
+                }
+            }
+
+            const newInc = {
+                id: "INC-" + Math.floor(1000 + Math.random() * 9000),
+                title: isMedical ? "Critical Medical Event" : (isFire ? "Reported Fire" : (lowerText.includes('traffic') ? "Traffic Gridlock / Hazard" : "Civilian Report")),
+                location: locName,
+                triageScore: Math.min(score, 10.0),
+                agency: agency,
+                time: "Just now",
+                details: text,
+                lat: lat,
+                lng: lng
+            };
+
+            mockIncidents.push(newInc);
+            renderFeed();
+            selectIncident(newInc);
+            inputField.value = ""; // clear
+            if (latField) latField.value = "";
+            if (lngField) lngField.value = "";
+
+            if (btn) {
+                btn.disabled = false;
+                btn.innerText = "Analyze Incident via AI";
+            }
+        }
+
+        // Initialize App
+        window.onload = renderFeed;
+
+    </script>
+</body>
+
+</html>
