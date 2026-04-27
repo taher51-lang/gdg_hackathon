@@ -305,17 +305,35 @@
         }
         @media (min-width: 900px) {
             body { align-items: center; }
-            .app-container { box-shadow: 0 24px 80px rgba(0,0,0,0.5); border-radius: 24px; background: rgba(15,23,42,0.6); backdrop-filter: blur(20px); border: 1px solid rgba(148,163,184,0.1); }
+            .app-container { 
+                /* Removed modal background to make it flush with the screen */
+                border-radius: 24px; 
+            }
         }
 
-        /* Countdown timer text */
-        .countdown-text {
-            color: var(--text-muted);
-            font-size: 0.82rem;
-            margin-top: -8px;
-            margin-bottom: 12px;
-            min-height: 18px;
-            font-style: italic;
+        /* Full-screen blurred overlay for countdown */
+        .countdown-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(12px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            font-weight: 800;
+            color: white;
+            text-align: center;
+            cursor: pointer;
+            padding: 20px;
+        }
+        .countdown-overlay.show {
+            opacity: 1;
+            pointer-events: auto; /* Catch clicks to cancel */
         }
 
         /* ETA banner above map */
@@ -352,13 +370,14 @@
 
     <!-- STEP 1: HOME -->
     <div id="step-home" class="step active">
-        <h1 style="color: var(--accent-red); letter-spacing: 2px; margin-bottom: 10px;">EMERGENCY PORTAL</h1>
-        <p style="color: var(--text-muted); font-size: 1.1rem;">Press the button below for immediate assistance</p>
+        <h1 style="color: var(--text-light); font-size: clamp(1.8rem, 6vw, 2.5rem); text-align: center; margin-bottom: 40px;">
+            Press the button below for<br><span style="color: var(--accent-red);">immediate assistance</span>
+        </h1>
         
-        <div class="sos-button-wrapper">
+        <div class="sos-button-wrapper" style="margin-top: 20px; margin-bottom: 40px;">
             <div class="sos-ripple"></div>
             <div class="sos-ripple"></div>
-            <button class="sos-button" onclick="goToStep('step-type')">SOS</button>
+            <button class="sos-button" style="width: min(300px, 75vw); height: min(300px, 75vw); font-size: clamp(4rem, 16vw, 6rem);" onclick="goToStep('step-type')">SOS</button>
         </div>
     </div>
 
@@ -367,31 +386,40 @@
     <div id="step-type" class="step">
         <h2>What's your emergency?</h2>
         
-        <button class="option-btn" onclick="selectType('Fire Accident')">
-            🔥 Fire Accident
-        </button>
-        <button class="option-btn" onclick="selectType('Medical / Any Emergency')">
-            🚑 Medical / Other Emergency
-        </button>
+        <div style="display:flex; flex-direction:column; gap:10px; width:100%;">
+            <button class="option-btn" onclick="selectType('FIRE')">🔥 FIRE</button>
+            <button class="option-btn" onclick="selectType('MEDICAL')">🚑 MEDICAL</button>
+            <button class="option-btn" onclick="selectType('OTHER')">⚠️ OTHER</button>
+        </div>
 
         <button class="btn btn-outline" onclick="goToStep('step-home')">Cancel</button>
     </div>
 
 
     <!-- STEP 3: DETAILS & MIC -->
-    <div id="step-input" class="step">
+    <div id="step-input" class="step" style="width: 100%;">
         <h2>Provide Details</h2>
         <p id="display-type" style="color: var(--accent-red); font-weight: bold; margin-bottom: 15px;">Target: Unknown</p>
         
-        <textarea id="emergency-text" rows="4" placeholder="Briefly describe the situation (e.g. 'Huge grease fire in kitchen, 2 people trapped...')"></textarea>
-        
-        <button class="mic-btn" id="mic-btn" onclick="toggleMic()">
-            🎤 <span>Tap to Speak</span>
-        </button>
+        <div style="position: relative; width: 100%; margin-bottom: 10px;">
+            <textarea id="emergency-text" rows="5" placeholder="Briefly describe the situation (e.g. 'Huge grease fire...')" style="padding-bottom: 56px; resize: none; margin-bottom: 0; border-radius: 16px;"></textarea>
+            
+            <div style="position: absolute; bottom: 10px; right: 10px; display: flex; gap: 8px;">
+                <input type="file" id="media-upload" accept="image/*,video/*" style="display: none;" onchange="handleMediaUpload(event)">
+                <button class="btn btn-outline" id="media-btn" onclick="document.getElementById('media-upload').click()" title="Upload Image/Video" style="margin: 0; width: 42px; height: 42px; min-height: unset; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+                    📸
+                </button>
+                <button class="mic-btn" id="mic-btn" onclick="startVoiceTranscription()" title="Tap to Speak" style="margin: 0; width: 42px; height: 42px; min-height: unset; padding: 0; border-radius: 50%;">
+                    🎤
+                </button>
+                <button class="btn btn-blue" onclick="goToStep('step-location')" title="Continue" style="margin: 0; width: 42px; height: 42px; min-height: unset; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+                    ➔
+                </button>
+            </div>
+        </div>
 
-        <button class="btn btn-blue" onclick="goToStep('step-location')">Continue ➔</button>
-        <p id="input-countdown" class="countdown-text"></p>
-        <button class="btn btn-outline" onclick="goToStep('step-type')">Back</button>
+        <div id="input-countdown" class="countdown-overlay"></div>
+        <button class="btn btn-outline" style="margin-top: 10px;" onclick="goToStep('step-type')">Back</button>
     </div>
 
 
@@ -404,14 +432,14 @@
         </button>
         
         <div id="gps-status" class="status-text"></div>
-        <p id="location-countdown" class="countdown-text"></p>
+        <div id="location-countdown" class="countdown-overlay"></div>
         
         <p style="color: var(--text-muted); margin: 10px 0;">— OR ENTER MANUALLY —</p>
         
         <input type="text" id="manual-location" placeholder="e.g. Times Square, near the red stairs">
 
-        <button class="btn btn-red" style="margin-top:20px; font-size: 1.3rem; letter-spacing: 1px;" onclick="sendToLLM()">
-            🚨 ROUTE TO HOSPITAL
+        <button class="btn btn-red" style="margin-top:20px; font-size: 1.2rem; letter-spacing: 1px;" onclick="sendToLLM()">
+            🚨 DISPATCH EMERGENCY UNITS
         </button>
 
         <button class="btn btn-outline" onclick="goToStep('step-input')">Back</button>
@@ -444,125 +472,193 @@
         details: '',
         lat: null,
         lng: null,
-        manualAddress: ''
+        manualAddress: '',
+        mediaBase64: null
     };
 
     // Tracks the currently active recognition instance (null = not listening)
     let activeRecognition = null;
 
     // Timer state
-    let stepInputTimer = null;
-    let stepLocationTimer = null;
+    let idleTimeout = null;
+    let overlayInterval = null;
     let dispatchMap = null; // Leaflet map instance
 
     // Navigation — clears timers and fires step-specific init
     function goToStep(stepId) {
-        clearStepTimers();
+        clearIdleTimers();
         document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
         document.getElementById(stepId).classList.add('active');
         if (stepId === 'step-input') startInputCountdown();
         if (stepId === 'step-location') startLocationCountdown();
     }
 
-    function clearStepTimers() {
-        if (stepInputTimer)    { clearInterval(stepInputTimer);    stepInputTimer = null; }
-        if (stepLocationTimer) { clearInterval(stepLocationTimer); stepLocationTimer = null; }
+    function clearIdleTimers() {
+        if (idleTimeout) { clearTimeout(idleTimeout); idleTimeout = null; }
+        if (overlayInterval) { clearInterval(overlayInterval); overlayInterval = null; }
+        document.querySelectorAll('.countdown-overlay').forEach(el => el.classList.remove('show'));
     }
 
-    // Auto-continue from Provide Details if no input entered within 10 s
+    // Unified idle + overlay logic
+    function setupIdleOverlay(overlayId, waitMs, countdownSec, onComplete) {
+        clearIdleTimers();
+        const overlay = document.getElementById(overlayId);
+
+        const triggerOverlay = () => {
+            let remaining = countdownSec;
+            overlay.innerText = `Auto-continuing in ${remaining}s...`;
+            overlay.classList.add('show');
+            
+            // Cancel if they click anywhere on the overlay
+            overlay.onclick = () => {
+                clearIdleTimers();
+                // User interacted, so give them 10s more before showing overlay again
+                setupIdleOverlay(overlayId, 10000, countdownSec, onComplete);
+            };
+
+            overlayInterval = setInterval(() => {
+                remaining--;
+                if (remaining <= 0) {
+                    clearIdleTimers();
+                    onComplete();
+                } else {
+                    overlay.innerText = `Auto-continuing in ${remaining}s...`;
+                }
+            }, 1000);
+        };
+
+        idleTimeout = setTimeout(triggerOverlay, waitMs);
+    }
+
+    // Step 3 Logic
     function startInputCountdown() {
-        const countdownEl = document.getElementById('input-countdown');
-        let remaining = 10;
-        countdownEl.innerText = `Auto-continuing in ${remaining}s if no text entered…`;
-
-        stepInputTimer = setInterval(() => {
-            const textarea = document.getElementById('emergency-text');
-            if (textarea.value.trim()) {
-                // User typed something — cancel
-                clearInterval(stepInputTimer);
-                stepInputTimer = null;
-                countdownEl.innerText = '';
-                return;
-            }
-            remaining--;
-            if (remaining <= 0) {
-                clearInterval(stepInputTimer);
-                stepInputTimer = null;
-                countdownEl.innerText = '';
-                textarea.value = 'Emergency reported — no specific details provided.';
+        const textarea = document.getElementById('emergency-text');
+        
+        textarea.oninput = () => {
+            // User typing: wait 10s of silence before showing 10s overlay
+            setupIdleOverlay('input-countdown', 10000, 10, () => {
+                if (!textarea.value.trim()) {
+                    textarea.value = "Empty detail (auto-advanced)";
+                }
                 goToStep('step-location');
-            } else {
-                countdownEl.innerText = `Auto-continuing in ${remaining}s if no text entered…`;
+            });
+        };
+
+        // Initially: wait 5s of silence before showing 10s overlay
+        setupIdleOverlay('input-countdown', 5000, 10, () => {
+            if (!textarea.value.trim()) {
+                textarea.value = "Empty detail (auto-advanced)";
             }
-        }, 1000);
+            goToStep('step-location');
+        });
     }
 
-    // Auto-detect GPS on Location step if nothing provided within 10 s
+    // Step 4 Logic
     function startLocationCountdown() {
-        const countdownEl = document.getElementById('location-countdown');
-        let remaining = 10;
-        countdownEl.innerText = `Auto-detecting GPS in ${remaining}s…`;
+        const manualInput = document.getElementById('manual-location');
+        
+        manualInput.oninput = () => {
+            // User typing: wait 10s of silence before showing 10s overlay
+            setupIdleOverlay('location-countdown', 10000, 10, () => {
+                const val = manualInput.value.trim();
+                if (EmergencyState.lat || val) { sendToLLM(); } else { detectGPSAndSubmit(); }
+            });
+        };
 
-        stepLocationTimer = setInterval(() => {
-            const manualInput = document.getElementById('manual-location').value.trim();
-            if (EmergencyState.lat || manualInput) {
-                // Already have location — cancel
-                clearInterval(stepLocationTimer);
-                stepLocationTimer = null;
-                countdownEl.innerText = '';
-                return;
+        // Initially: wait 5s of silence before showing 10s overlay
+        setupIdleOverlay('location-countdown', 5000, 10, () => {
+            const val = manualInput.value.trim();
+            if (EmergencyState.lat || val) { sendToLLM(); } else { detectGPSAndSubmit(); }
+        });
+    }
+
+    // Instantly detect GPS and submit without waiting for user action
+    function detectGPSAndSubmit() {
+        const status = document.getElementById('gps-status');
+        status.innerText = "Auto-locating...";
+        if (!navigator.geolocation) {
+            sendToLLM();
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                EmergencyState.lat = position.coords.latitude;
+                EmergencyState.lng = position.coords.longitude;
+                document.getElementById('manual-location').value = "Auto-detected GPS";
+                sendToLLM();
+            },
+            (error) => {
+                sendToLLM();
             }
-            remaining--;
-            if (remaining <= 0) {
-                clearInterval(stepLocationTimer);
-                stepLocationTimer = null;
-                countdownEl.innerText = '';
-                detectGPS();
-            } else {
-                countdownEl.innerText = `Auto-detecting GPS in ${remaining}s…`;
-            }
-        }, 1000);
+        );
     }
 
     // Step 2 Logic
     function selectType(type) {
         EmergencyState.type = type;
         document.getElementById('display-type').innerText = `Category: ${type}`;
+        
+        // Dynamically update placeholder based on emergency type
+        const textarea = document.getElementById('emergency-text');
+        if (type === 'FIRE') {
+            textarea.placeholder = "Briefly describe the situation (e.g. 'Huge grease fire in kitchen, 2 people trapped...')";
+        } else if (type === 'MEDICAL') {
+            textarea.placeholder = "Briefly describe the situation (e.g. 'Severe chest pain, person is conscious but having trouble breathing...')";
+        } else {
+            textarea.placeholder = "Briefly describe the situation...";
+        }
+        
         goToStep('step-input');
     }
 
-    // Step 3 Logic (Mic) — Improved: toggle-safe, preserves existing text, interim+final
-    function toggleMic() {
+    // Media Upload Logic
+    function handleMediaUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            EmergencyState.mediaBase64 = e.target.result;
+            // Visual feedback
+            const mediaBtn = document.getElementById('media-btn');
+            mediaBtn.style.backgroundColor = 'var(--accent-blue)';
+            mediaBtn.style.color = 'white';
+            mediaBtn.style.borderColor = 'var(--accent-blue)';
+            mediaBtn.title = "Media uploaded";
+        };
+        reader.onerror = function(err) {
+            console.error("Error reading file", err);
+            alert("Failed to load file.");
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // Step 3 Logic (Mic) — Requested startVoiceTranscription logic
+    function startVoiceTranscription() {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognition) {
-            alert("Speech Recognition API is not supported in this browser. Please use Chrome or Edge.");
-            return;
-        }
-
-        // If already listening, stop and return
-        if (activeRecognition) {
-            activeRecognition.stop();
-            activeRecognition = null;
-            stopMic();
+            alert("Speech Recognition API is not supported in this browser. Please use Chrome/Edge.");
             return;
         }
 
         const recognition = new SpeechRecognition();
-        activeRecognition = recognition;
-
         recognition.continuous = false;
         recognition.interimResults = true;
         recognition.lang = 'en-US';
 
         const inputField = document.getElementById('emergency-text');
-        const btn = document.getElementById('mic-btn');
+        const micBtn = document.getElementById('mic-btn');
 
-        // Snapshot text before listening starts so we can append, not replace
-        const textBeforeListening = inputField.value;
+        // Clear auto-continue timer while mic is active
+        clearIdleTimers();
 
-        // Visual: set listening state
-        btn.classList.add('listening');
-        btn.querySelector('span').innerText = 'Listening... (Tap to stop)';
+        // Visual feedback
+        const originalColor = micBtn.style.color || '';
+        micBtn.style.color = '#1A73E8'; // Blue while listening
+        micBtn.classList.add('listening');
+
+        // Backup current text
+        const currentText = inputField.value;
 
         recognition.onresult = function (event) {
             let interimTranscript = '';
@@ -576,31 +672,21 @@
                 }
             }
 
-            // Append to existing text; show live typing via interim
-            inputField.value = textBeforeListening +
-                (textBeforeListening ? ' ' : '') +
-                finalTranscript +
-                interimTranscript;
+            inputField.value = currentText + (currentText ? ' ' : '') + finalTranscript + interimTranscript;
         };
 
         recognition.onerror = function (event) {
-            console.error('Speech recognition error:', event.error);
-            activeRecognition = null;
-            stopMic();
+            console.error("Speech recognition error", event.error);
+            micBtn.style.color = originalColor;
+            micBtn.classList.remove('listening');
         };
 
         recognition.onend = function () {
-            activeRecognition = null;
-            stopMic();
+            micBtn.style.color = originalColor;
+            micBtn.classList.remove('listening');
         };
 
         recognition.start();
-    }
-
-    function stopMic() {
-        const btn = document.getElementById('mic-btn');
-        btn.classList.remove('listening');
-        btn.querySelector('span').innerText = 'Tap to Speak';
     }
 
     // Step 4 Logic (GPS)
@@ -643,10 +729,9 @@
             EmergencyState.lng = null;
         }
 
-        if (!EmergencyState.details) {
-            alert("Please provide at least some details about the emergency.");
-            goToStep('step-input');
-            return;
+        // Bypass empty validation if it was auto-advanced or left completely empty by the timers
+        if (!EmergencyState.details || EmergencyState.details === "") {
+            EmergencyState.details = "Empty detail (auto-advanced)";
         }
 
         if (!EmergencyState.lat && !EmergencyState.manualAddress) {
@@ -661,10 +746,11 @@
         const payload = {
             latitude: EmergencyState.lat || 0.0,
             longitude: EmergencyState.lng || 0.0,
-            description: `[${EmergencyState.type}] ${EmergencyState.details}. Location Note: ${EmergencyState.manualAddress}`
+            description: `[${EmergencyState.type}] ${EmergencyState.details}. Location Note: ${EmergencyState.manualAddress}`,
+            media: EmergencyState.mediaBase64
         };
 
-        fetch('http://localhost:8000/api/v1/triage', {
+        fetch('http://localhost:8080/api/v1/triage', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -688,58 +774,65 @@
             h2.style.color = "#34d399";
             p.innerText = "The LLM processed the triage and routed this directly to the best-matched hospital vector.";
 
-            // ── ETA Calculation (assumes ~60 km/h ambulance speed) ──
-            const distKm = data.dispatched_hospital.distance_km;
-            const etaMins = Math.max(1, Math.ceil((distKm / 60) * 60));
+            // ── Resolve dispatched unit (new backend returns dispatched_units.medical) ──
+            const medUnit = data.dispatched_units?.medical || data.dispatched_hospital || {};
+            const distKm = medUnit.distance_km ?? medUnit.distance ?? null;
             const etaBanner = document.getElementById('eta-banner');
-            etaBanner.innerHTML = `🚑 Estimated arrival: <strong>${etaMins} min</strong> &nbsp;(${distKm} km away)`;
-            etaBanner.style.display = 'block';
+            if (distKm !== null) {
+                const etaMins = Math.max(1, Math.ceil((distKm / 60) * 60));
+                etaBanner.innerHTML = `🚑 Estimated arrival: <strong>${etaMins} min</strong> &nbsp;(${distKm} km away)`;
+                etaBanner.style.display = 'block';
+            }
 
             // ── Leaflet Map ──
             const mapDiv = document.getElementById('dispatch-map');
-            mapDiv.style.display = 'block';
+            const hospLat = medUnit.latitude;
+            const hospLng = medUnit.longitude;
 
-            // Destroy previous map instance if it exists
-            if (dispatchMap) { dispatchMap.remove(); dispatchMap = null; }
+            if (hospLat && hospLng) {
+                mapDiv.style.display = 'block';
 
-            const userLat  = payload.latitude  || 19.076;   // fallback: Mumbai
-            const userLng  = payload.longitude || 72.877;
-            const hospLat  = data.dispatched_hospital.latitude;
-            const hospLng  = data.dispatched_hospital.longitude;
+                // Destroy previous map instance if it exists
+                if (dispatchMap) { dispatchMap.remove(); dispatchMap = null; }
 
-            dispatchMap = L.map('dispatch-map').setView([userLat, userLng], 13);
+                const userLat  = payload.latitude  || 19.076;   // fallback: Mumbai
+                const userLng  = payload.longitude || 72.877;
 
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(dispatchMap);
+                dispatchMap = L.map('dispatch-map').setView([userLat, userLng], 13);
 
-            // User marker (red)
-            const redIcon = L.divIcon({
-                className: '',
-                html: '<div style="background:#ef4444;width:14px;height:14px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 6px rgba(0,0,0,0.5)"></div>',
-                iconSize: [14, 14], iconAnchor: [7, 7]
-            });
-            L.marker([userLat, userLng], { icon: redIcon })
-              .addTo(dispatchMap)
-              .bindPopup('📍 Your Location').openPopup();
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(dispatchMap);
 
-            // Hospital marker (blue)
-            const blueIcon = L.divIcon({
-                className: '',
-                html: '<div style="background:#3b82f6;width:16px;height:16px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 6px rgba(0,0,0,0.5)"></div>',
-                iconSize: [16, 16], iconAnchor: [8, 8]
-            });
-            L.marker([hospLat, hospLng], { icon: blueIcon })
-              .addTo(dispatchMap)
-              .bindPopup(`🏥 ${data.dispatched_hospital.hospital_name}`);
+                // User marker (red)
+                const redIcon = L.divIcon({
+                    className: '',
+                    html: '<div style="background:#ef4444;width:14px;height:14px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 6px rgba(0,0,0,0.5)"></div>',
+                    iconSize: [14, 14], iconAnchor: [7, 7]
+                });
+                L.marker([userLat, userLng], { icon: redIcon })
+                  .addTo(dispatchMap)
+                  .bindPopup('📍 Your Location').openPopup();
 
-            // Route line between user and hospital
-            L.polyline([[userLat, userLng], [hospLat, hospLng]], {
-                color: '#ef4444', weight: 3, dashArray: '6 4'
-            }).addTo(dispatchMap);
+                // Hospital marker (blue)
+                const blueIcon = L.divIcon({
+                    className: '',
+                    html: '<div style="background:#3b82f6;width:16px;height:16px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 6px rgba(0,0,0,0.5)"></div>',
+                    iconSize: [16, 16], iconAnchor: [8, 8]
+                });
+                const unitName = medUnit.hospital_name || medUnit.unit_name || 'Dispatched Unit';
+                L.marker([hospLat, hospLng], { icon: blueIcon })
+                  .addTo(dispatchMap)
+                  .bindPopup(`🏥 ${unitName}`);
 
-            // Fit map bounds to show both markers
-            dispatchMap.fitBounds([[userLat, userLng], [hospLat, hospLng]], { padding: [30, 30] });
+                // Route line between user and hospital
+                L.polyline([[userLat, userLng], [hospLat, hospLng]], {
+                    color: '#ef4444', weight: 3, dashArray: '6 4'
+                }).addTo(dispatchMap);
+
+                // Fit map bounds to show both markers
+                dispatchMap.fitBounds([[userLat, userLng], [hospLat, hospLng]], { padding: [30, 30] });
+            }
 
             const outputPayload = {
                 sent_to_backend: payload,

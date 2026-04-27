@@ -10,7 +10,7 @@ from langchain_huggingface import HuggingFaceEndpointEmbeddings
 # LangChain Imports
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_xai import ChatXAI
+# from langchain_xai import ChatXAI  # Not installed — commented out
 from langchain_groq import ChatGroq
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
@@ -120,6 +120,7 @@ class EmergencyRequest(BaseModel):
     latitude: float = Field(..., description="GPS Latitude from the frontend device")
     longitude: float = Field(..., description="GPS Longitude from the frontend device")
     description: str = Field(..., description="The user's frantic text or transcribed voice report")
+    media: Optional[str] = Field(None, description="Base64 encoded image or video")
 class LocationMetadata(BaseModel):
     latitude: float = Field(description="The GPS latitude.")
     longitude: float = Field(description="The GPS longitude.")
@@ -192,17 +193,23 @@ def dispatch_best_hospital(user_lat, user_lon, required_resources: List[str]) ->
         user_lat, user_lon, df_hospitals['latitude'], df_hospitals['longitude']
     )
     
-    # 2. FILTER: Grab the 5 absolute closest hospitals
-    closest_5 = df_hospitals.nsmallest(5, 'distance_km')
+    # 2. FILTER: Take hospitals within 25km; fallback to 5 closest
+    local_hospitals = df_hospitals[df_hospitals['distance_km'] <= 25.0]
     
     # EDGE CASE: User is stranded on a highway and NO hospitals are within 25km.
     if local_hospitals.empty:
         # Fallback: Just grab the 5 absolute closest ones, regardless of distance
         local_hospitals = df_hospitals.nsmallest(5, 'distance_km')
+        
+    closest_5 = local_hospitals.nsmallest(5, 'distance_km')
 
-    # 3. VECTOR SECOND: Convert the local slice to LangChain Documents
+    # 3. BUILD TEXT LIST for the LLM matchmaker
+    hospitals_text = ""
+    for _, row in closest_5.iterrows():
+        hospitals_text += f"- Name: {row['name']} | Distance: {row['distance_km']:.2f} km | Capabilities: {row['capabilities']}\n"
+        
     docs = []
-    for _, row in local_hospitals.iterrows():
+    for _, row in closest_5.iterrows():
         docs.append(
             Document(
                 page_content=row['capabilities'], 
@@ -226,6 +233,8 @@ def dispatch_best_hospital(user_lat, user_lon, required_resources: List[str]) ->
         "hospital_name": decision.unit_name, 
         "distance_km": round(chosen_row['distance_km'], 2),
         "matched_capabilities": chosen_row['capabilities'],
+        "latitude": float(chosen_row['latitude']),
+        "longitude": float(chosen_row['longitude']),
         "ai_reasoning": decision.reasoning
     }
 def dispatch_best_fire_station(user_lat, user_lon, required_resources: List[str]) -> dict:
@@ -252,11 +261,12 @@ def dispatch_best_fire_station(user_lat, user_lon, required_resources: List[str]
     chosen_row = closest_5[closest_5['name'] == decision.unit_name].iloc[0]
     
     return {
-        "hospital_name": best_match.metadata['name'],
-        "distance_km": round(best_match.metadata['distance'], 2),
-        "matched_capabilities": best_match.page_content,
-        "latitude": best_match.metadata['latitude'],
-        "longitude": best_match.metadata['longitude']
+        "unit_name": decision.unit_name,
+        "distance_km": round(chosen_row['distance_km'], 2),
+        "matched_capabilities": chosen_row['capabilities'],
+        "latitude": float(chosen_row['latitude']),
+        "longitude": float(chosen_row['longitude']),
+        "ai_reasoning": decision.reasoning
     }
 
 def dispatch_best_police_station(user_lat, user_lon, required_resources: List[str]) -> dict:
@@ -400,6 +410,20 @@ async def triage_and_dispatch(request: EmergencyRequest):
         print(f"Server Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/")
+from fastapi.responses import HTMLResponse
+
+@app.get("/health")
 def health_check():
     return {"status": "Active", "message": "API is running. Send POST to /api/v1/triage"}
+
+@app.get("/", response_class=HTMLResponse)
+@app.get("/index.html", response_class=HTMLResponse)
+def serve_frontend():
+    file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "index.html")
+    with open(file_path, "r", encoding="utf-8") as f:
+        return f.read()
+
+from fastapi import Response
+@app.get("/favicon.ico")
+def favicon():
+    return Response(status_code=204)
