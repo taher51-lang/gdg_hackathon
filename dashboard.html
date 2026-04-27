@@ -418,60 +418,6 @@
             fill: currentColor;
         }
 
-        /* Multimodal Input Section */
-        .input-panel {
-            padding: 24px;
-            background-color: var(--md-sys-color-surface);
-            border-top: 1px solid var(--md-sys-color-surface-variant);
-            box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.02);
-        }
-
-        .input-group {
-            position: relative;
-            margin-bottom: 16px;
-        }
-
-        .input-group textarea {
-            width: 100%;
-            border: 2px solid var(--md-sys-color-surface-variant);
-            border-radius: var(--border-radius-sm);
-            padding: 14px;
-            padding-right: 54px;
-            font-size: 0.95rem;
-            resize: none;
-            height: 90px;
-            background-color: var(--md-sys-color-background);
-            transition: all 0.2s;
-            color: var(--md-sys-color-primary);
-        }
-
-        .input-group textarea:focus {
-            outline: none;
-            border-color: #1A73E8;
-            box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
-        }
-
-        .mic-btn {
-            position: absolute;
-            right: 12px;
-            bottom: 14px;
-            background: #FEF2F2;
-            border: none;
-            color: #DC2626;
-            cursor: pointer;
-            padding: 8px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-        }
-
-        .mic-btn:hover {
-            background-color: #FCA5A5;
-            transform: scale(1.05);
-        }
-
         .ai-highlight {
             background-color: #FEF08A;
             color: #854D0E;
@@ -585,40 +531,6 @@
             <div class="feed-list" id="feedList">
                 <!-- Cards injected via JS -->
             </div>
-
-            <!-- Manual/Multimodal Input Module -->
-            <div class="input-panel">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                    <h3 style="font-size: 0.95rem; font-weight: 600; color: var(--md-sys-color-primary);">Report
-                        Incident (Manual Override)</h3>
-                </div>
-                <div class="input-group">
-                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-                        <input type="number" id="incidentLat" placeholder="Latitude (e.g. 18.968)" step="0.0001"
-                            style="flex: 1; border: 2px solid var(--md-sys-color-surface-variant); border-radius: var(--border-radius-sm); padding: 10px 14px; font-size: 0.9rem; background-color: var(--md-sys-color-background); color: var(--md-sys-color-primary); outline: none; transition: all 0.2s;"
-                            onfocus="this.style.borderColor='#1A73E8'"
-                            onblur="this.style.borderColor='var(--md-sys-color-surface-variant)'">
-                        <input type="number" id="incidentLng" placeholder="Longitude (e.g. 72.827)" step="0.0001"
-                            style="flex: 1; border: 2px solid var(--md-sys-color-surface-variant); border-radius: var(--border-radius-sm); padding: 10px 14px; font-size: 0.9rem; background-color: var(--md-sys-color-background); color: var(--md-sys-color-primary); outline: none; transition: all 0.2s;"
-                            onfocus="this.style.borderColor='#1A73E8'"
-                            onblur="this.style.borderColor='var(--md-sys-color-surface-variant)'">
-                        āā
-                    </div>
-                    <div style="position: relative;">
-                        <textarea id="incidentInput"
-                            placeholder="Press the mic icon to transcribe live 112 emergency call..."></textarea>
-                        <button class="mic-btn" id="micBtn" title="Start voice transcription" āā
-                            onclick="startVoiceTranscription()">āā
-                            <svg class="icon-md" viewBox="0 0 24 24" fill="currentColor">
-                                <path
-                                    d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-                <button class="btn btn-primary" id="analyzeBtn" onclick="simulateNewReport()">Analyze Incident via
-                    AI</button>
-            </div>
         </aside>
 
     </main>
@@ -626,60 +538,8 @@
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <script>
-        // Mock Data for "Fail-Safe Logic" / Initial Load
-        const mockIncidents = [
-            {
-                id: "INC-102",
-                title: "Massive Structural Fire",
-                location: "Grand Hotel, North Wing",
-                triageScore: 9.8,
-                agency: "Fire + EMS",
-                time: "1 min ago",
-                details: "Multiple floors ablaze. Potential structural collapse. 3 civilians trapped on top floor requiring immediate extraction. Heavy smoke.",
-                lat: 18.968,
-                lng: 72.827
-            },
-            {
-                id: "INC-103",
-                title: "Armed Robbery in Progress",
-                location: "Central Bank, 5th Ave",
-                triageScore: 8.5,
-                agency: "Police",
-                time: "3 mins ago",
-                details: "Suspects armed with AR weapons, actively engaging security. Customers trapped inside the lobby. Requesting tactical unit.",
-                lat: 18.955,
-                lng: 72.810
-            },
-            {
-                id: "INC-104",
-                title: "Multi-vehicle collision",
-                location: "Highway 42, Mile marker 12",
-                triageScore: 6.2,
-                agency: "EMS + Police",
-                time: "10 mins ago",
-                details: "3 cars involved in high-speed collision. Traffic completely blocked. Paramedics assessing suspected minor lacerations.",
-                lat: 18.960,
-                lng: 72.835
-            },
-            {
-                id: "INC-105",
-                title: "Noise Complaint / Disturbance",
-                location: "142 Suburbia Lane",
-                triageScore: 2.1,
-                agency: "Police",
-                time: "25 mins ago",
-                details: "Loud music playing past midnight. Non-violent. Routine patrol approach advised.",
-                lat: 18.975,
-                lng: 72.820
-            }
-        ];
-
-        const mockHospitals = [
-            { id: "H-1", name: "City General Hospital", lat: 18.960, lng: 72.820, beds: { icu: 4, general: 12 } },
-            { id: "H-2", name: "St. Mary's Medical Center", lat: 18.972, lng: 72.835, beds: { icu: 0, general: 5 } },
-            { id: "H-3", name: "Metro Trauma Center", lat: 18.950, lng: 72.815, beds: { icu: 8, general: 24 } },
-            { id: "H-4", name: "Sunrise Clinic", lat: 18.965, lng: 72.840, beds: { icu: 1, general: 8 } }
-        ];
+        // Real state for incidents fetched from backend
+        let liveIncidents = [];
 
         // Haversine formula (approx) to get distance in km
         function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
@@ -737,8 +597,13 @@
             const list = document.getElementById('feedList');
             list.innerHTML = '';
 
+            if (liveIncidents.length === 0) {
+                list.innerHTML = '<div style="padding: 24px; text-align: center; color: #94A3B8;">No active incidents.</div>';
+                return;
+            }
+
             // Sort by triage score descending (highest priority first)
-            const sorted = [...mockIncidents].sort((a, b) => b.triageScore - a.triageScore);
+            const sorted = [...liveIncidents].sort((a, b) => b.triageScore - a.triageScore);
 
             sorted.forEach(incident => {
                 const sevClass = getSeverityClass(incident.triageScore);
@@ -766,12 +631,7 @@
                         <div class="triage-score-container">
                             <div class="triage-score">${incident.triageScore.toFixed(1)}</div>
                             <span class="triage-label">Triage Priority</span>
-                        </div>
                     </div>
-                    
-                    <button class="btn btn-primary" onclick="event.stopPropagation(); alert('Prefilling EDXL-DE form for ${incident.id}\\n\\nAuto-Pushing to Nearest Unit!')">
-                        Dispatch Nearest Unit
-                    </button>
                 `;
                 list.appendChild(card);
 
@@ -823,28 +683,20 @@
             const hospSection = document.getElementById('hospitalSection');
             const hospList = document.getElementById('hospitalList');
 
-            if (incident.agency.includes('EMS') || incident.agency.includes('Fire') || incident.triageScore >= 6) {
+            if (incident.units.length > 0) {
                 hospSection.style.display = 'block';
 
-                // Calculate distances and sort
-                const nearbyHospitals = mockHospitals.map(h => {
-                    const dist = getDistanceFromLatLonInKm(incident.lat, incident.lng, h.lat, h.lng);
-                    return { ...h, distance: dist };
-                }).sort((a, b) => a.distance - b.distance).slice(0, 3); // top 3
-
-                hospList.innerHTML = nearbyHospitals.map(h => `
+                hospList.innerHTML = incident.units.map(unit => `
                     <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 10px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                            <strong style="color: var(--md-sys-color-primary); font-size: 0.9rem;">${h.name}</strong>
-                            <span style="font-size: 0.8rem; color: #64748B;">${h.distance.toFixed(1)} km</span>
+                            <strong style="color: var(--md-sys-color-primary); font-size: 0.9rem;">${unit.name}</strong>
+                            <span style="font-size: 0.8rem; color: #64748B;">${unit.distance_km} km</span>
                         </div>
-                        <div style="display: flex; gap: 8px;">
-                            <span style="font-size: 0.8rem; background: ${h.beds.icu > 0 ? '#ECFDF5' : '#FEF2F2'}; color: ${h.beds.icu > 0 ? '#059669' : '#DC2626'}; border-radius: 4px; padding: 2px 6px; font-weight: 600;">
-                                ICU Beds: ${h.beds.icu}
-                            </span>
-                            <span style="font-size: 0.8rem; background: #F0F4FF; color: #1A73E8; border-radius: 4px; padding: 2px 6px; font-weight: 600;">
-                                General: ${h.beds.general}
-                            </span>
+                        <div style="font-size: 0.8rem; color: #1E293B; margin-bottom: 6px;">
+                            <strong>Capabilities:</strong> ${unit.capabilities || 'Standard'}
+                        </div>
+                        <div style="font-size: 0.8rem; font-style: italic; color: #0F172A; background: #FEF08A; padding: 4px 6px; border-radius: 4px;">
+                            🤖 ${unit.reasoning}
                         </div>
                     </div>
                 `).join('');
@@ -857,56 +709,6 @@
 
             // Auto open marker popup
             mapMarkers[incident.id].openPopup();
-        }
-
-        // --- VOICE RECOGNITION (STT) ---
-        function startVoiceTranscription() {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) {
-                alert("Speech Recognition API is not supported in this browser. Please use Chrome/Edge.");
-                return;
-            }
-
-            const recognition = new SpeechRecognition();
-            recognition.continuous = false;
-            recognition.interimResults = true;
-            recognition.lang = 'en-US';
-
-            const inputField = document.getElementById('incidentInput');
-            const micBtn = document.getElementById('micBtn');
-
-            // Visual feedback
-            const originalColor = micBtn.style.color || '#DC2626';
-            micBtn.style.color = '#1A73E8'; // Blue while listening
-
-            // Backup current text
-            const currentText = inputField.value;
-
-            recognition.onresult = function (event) {
-                let interimTranscript = '';
-                let finalTranscript = '';
-
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        finalTranscript += event.results[i][0].transcript;
-                    } else {
-                        interimTranscript += event.results[i][0].transcript;
-                    }
-                }
-
-                inputField.value = currentText + (currentText ? ' ' : '') + finalTranscript + interimTranscript;
-            };
-
-            recognition.onerror = function (event) {
-                console.error("Speech recognition error", event.error);
-                micBtn.style.color = originalColor;
-            };
-
-            recognition.onend = function () {
-                micBtn.style.color = originalColor;
-            };
-
-            recognition.start();
         }
 
         // --- TTS CONTROLS ---
@@ -924,105 +726,86 @@
             }
         }
 
-        // --- DYNAMIC AI INGESTION SIMULATION ---
-        async function simulateNewReport() {
-            const inputField = document.getElementById('incidentInput');
-            const latField = document.getElementById('incidentLat');
-            const lngField = document.getElementById('incidentLng');
-            const text = inputField.value;
-            const inputLat = latField ? parseFloat(latField.value) : NaN;
-            const inputLng = lngField ? parseFloat(lngField.value) : NaN;
-
-            if (!text.trim()) {
-                alert("Please dictate or type a report first.");
-                return;
-            }
-
-            const btn = document.getElementById('analyzeBtn');
-            if (btn) {
-                btn.disabled = true;
-                btn.innerText = "Geocoding & Analyzing...";
-            }
-
-            // Simulate parsing text
-            const lowerText = text.toLowerCase();
-            const isMedical = lowerText.includes('unconscious') || lowerText.includes('bleed') || lowerText.includes('injur');
-            const isFire = lowerText.includes('smoke') || lowerText.includes('fire');
-            const isPolice = lowerText.includes('weapon') || lowerText.includes('gun') || lowerText.includes('rob') || lowerText.includes('police') || lowerText.includes('traffic') || lowerText.includes('fender');
-
-            let agency = "Police";
-            if (isMedical && isFire) agency = "Fire + EMS";
-            else if (isMedical) agency = "EMS";
-            else if (isFire) agency = "Fire";
-            else if (isPolice) agency = "Police";
-
-            let score = 5.0; // default amber
-            if (isMedical || isFire) score = 8.8 + Math.random();
-            else if (isPolice && lowerText.includes('weapon')) score = 9.0;
-            else if (isPolice && lowerText.includes('traffic')) score = 6.5;
-            else if (text.length > 50) score = 6.0;
-
-            let lat = 18.968 + (Math.random() * 0.04 - 0.02); // Default Mumbai
-            let lng = 72.827 + (Math.random() * 0.04 - 0.02);
-            let locName = "Mumbai / Local Area";
-
-            // If an explicit lat/lng was provided (simulating an SOS signal coordinates)
-            if (!isNaN(inputLat) && !isNaN(inputLng)) {
-                lat = inputLat;
-                lng = inputLng;
-                locName = `SOS Signal (Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)})`;
-            } else {
-                // Heuristic parsing if location box was empty
-                if (lowerText.includes('ahmedabad') || lowerText.includes('nehru nagar')) {
-                    lat = 23.0225 + (Math.random() * 0.02 - 0.01);
-                    lng = 72.5714 + (Math.random() * 0.02 - 0.01);
-                    locName = lowerText.includes('nehru nagar') ? "Nehru Nagar, Ahmedabad" : "Ahmedabad City";
-                } else if (lowerText.includes('delhi')) {
-                    lat = 28.6139 + (Math.random() * 0.02 - 0.01);
-                    lng = 77.2090 + (Math.random() * 0.02 - 0.01);
-                    locName = "New Delhi Area";
-                } else if (lowerText.includes('pune')) {
-                    lat = 18.5204 + (Math.random() * 0.02 - 0.01);
-                    lng = 73.8567 + (Math.random() * 0.02 - 0.01);
-                    locName = "Pune City";
-                } else if (lowerText.includes('surat')) {
-                    lat = 21.1702 + (Math.random() * 0.02 - 0.01);
-                    lng = 72.8311 + (Math.random() * 0.02 - 0.01);
-                    locName = "Surat City";
-                } else if (lowerText.includes('bangalore') || lowerText.includes('bengaluru')) {
-                    lat = 12.9716 + (Math.random() * 0.02 - 0.01);
-                    lng = 77.5946 + (Math.random() * 0.02 - 0.01);
-                    locName = "Bangalore";
+        // --- DATA POLLING ---
+        async function fetchIncidents() {
+            try {
+                const response = await fetch('http://localhost:8000/api/v1/incidents');
+                if (!response.ok) throw new Error('Network response was not ok');
+                const data = await response.json();
+                
+                const newIncidents = data.incidents.map(inc => {
+                    const t = inc.triage_analysis;
+                    
+                    // Map severity to score
+                    const scores = { "CRITICAL": 9.5, "MASS_CASUALTY": 10.0, "HIGH": 7.5, "MODERATE": 5.0, "LOW": 2.0 };
+                    const triageScore = scores[t.severity_level] || 5.0;
+                    
+                    // Format time
+                    const d = new Date(inc.timestamp);
+                    const timeStr = d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    
+                    // Parse dispatched units
+                    let agencies = [];
+                    let unitsInfo = [];
+                    if (inc.dispatched_units.medical && inc.dispatched_units.medical.status !== "Not Required") {
+                        agencies.push("EMS");
+                        unitsInfo.push({
+                            name: inc.dispatched_units.medical.hospital_name,
+                            distance_km: inc.dispatched_units.medical.distance_km,
+                            capabilities: inc.dispatched_units.medical.matched_capabilities,
+                            reasoning: inc.dispatched_units.medical.ai_reasoning
+                        });
+                    }
+                    if (inc.dispatched_units.fire && inc.dispatched_units.fire.status !== "Not Required") {
+                        agencies.push("Fire");
+                        unitsInfo.push({
+                            name: inc.dispatched_units.fire.unit_name,
+                            distance_km: inc.dispatched_units.fire.distance_km,
+                            capabilities: inc.dispatched_units.fire.matched_capabilities,
+                            reasoning: inc.dispatched_units.fire.ai_reasoning
+                        });
+                    }
+                    if (inc.dispatched_units.police && inc.dispatched_units.police.status !== "Not Required") {
+                        agencies.push("Police");
+                        unitsInfo.push({
+                            name: inc.dispatched_units.police.unit_name,
+                            distance_km: inc.dispatched_units.police.distance_km,
+                            capabilities: inc.dispatched_units.police.matched_capabilities,
+                            reasoning: inc.dispatched_units.police.ai_reasoning
+                        });
+                    }
+                    
+                    return {
+                        id: inc.id,
+                        title: `${t.severity_level} ${t.crisis_category}`,
+                        location: t.location.venue_specifics || "Unknown Area",
+                        triageScore: triageScore,
+                        agency: agencies.join(" + ") || "Monitoring",
+                        time: timeStr,
+                        details: t.tts_summary || "No summary provided.",
+                        lat: t.location.latitude,
+                        lng: t.location.longitude,
+                        units: unitsInfo
+                    };
+                });
+                
+                // Only re-render if the number of incidents changed to avoid flickering
+                // In a real app, you'd check for deep equality or handle updates smoothly
+                if (newIncidents.length !== liveIncidents.length) {
+                    liveIncidents = newIncidents;
+                    renderFeed();
                 }
-            }
-
-            const newInc = {
-                id: "INC-" + Math.floor(1000 + Math.random() * 9000),
-                title: isMedical ? "Critical Medical Event" : (isFire ? "Reported Fire" : (lowerText.includes('traffic') ? "Traffic Gridlock / Hazard" : "Civilian Report")),
-                location: locName,
-                triageScore: Math.min(score, 10.0),
-                agency: agency,
-                time: "Just now",
-                details: text,
-                lat: lat,
-                lng: lng
-            };
-
-            mockIncidents.push(newInc);
-            renderFeed();
-            selectIncident(newInc);
-            inputField.value = ""; // clear
-            if (latField) latField.value = "";
-            if (lngField) lngField.value = "";
-
-            if (btn) {
-                btn.disabled = false;
-                btn.innerText = "Analyze Incident via AI";
+            } catch (error) {
+                console.error("Failed to fetch incidents:", error);
             }
         }
 
         // Initialize App
-        window.onload = renderFeed;
+        window.onload = () => {
+            fetchIncidents();
+            // Poll every 3 seconds
+            setInterval(fetchIncidents, 3000);
+        };
 
     </script>
 </body>
