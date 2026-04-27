@@ -5,6 +5,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Literal
 from dotenv import load_dotenv
+import uuid
+import os
+from datetime import datetime
 # LangChain Imports
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -18,6 +21,9 @@ load_dotenv()
 # ==========================================
 # 1. INITIALIZE DATA & MODELS
 # ==========================================
+
+# Global history for the dashboard
+incident_history = []
 # Load the hospital dataset into memory exactly ONCE when the server starts.
 # Ensure you have a 'mock_hospitals.csv' in the same directory with columns: 
 # ['name', 'latitude', 'longitude', 'capabilities']
