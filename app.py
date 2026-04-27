@@ -1,4 +1,3 @@
-import os
 import pandas as pd
 import numpy as np
 from fastapi import FastAPI, HTTPException
@@ -6,7 +5,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Literal
 from dotenv import load_dotenv
-from langchain_huggingface import HuggingFaceEndpointEmbeddings
 # LangChain Imports
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -196,9 +194,13 @@ def dispatch_best_hospital(user_lat, user_lon, required_resources: List[str]) ->
     })
     chosen_row = closest_5[closest_5['name'] == decision.unit_name].iloc[0]
     
+    eta_minutes = max(1, round(chosen_row['distance_km'] / 40 * 60))
     return {
-        "hospital_name": decision.unit_name, 
+        "hospital_name": decision.unit_name,
+        "latitude": float(chosen_row['latitude']),
+        "longitude": float(chosen_row['longitude']),
         "distance_km": round(chosen_row['distance_km'], 2),
+        "estimated_eta_minutes": eta_minutes,
         "matched_capabilities": chosen_row['capabilities'],
         "ai_reasoning": decision.reasoning
     }
@@ -225,9 +227,13 @@ def dispatch_best_fire_station(user_lat, user_lon, required_resources: List[str]
     # 5. Extract output
     chosen_row = closest_5[closest_5['name'] == decision.unit_name].iloc[0]
     
+    eta_minutes = max(1, round(chosen_row['distance_km'] / 40 * 60))
     return {
         "unit_name": decision.unit_name,
+        "latitude": float(chosen_row['latitude']),
+        "longitude": float(chosen_row['longitude']),
         "distance_km": round(chosen_row['distance_km'], 2),
+        "estimated_eta_minutes": eta_minutes,
         "matched_capabilities": chosen_row['capabilities'],
         "ai_reasoning": decision.reasoning
     }
@@ -255,9 +261,13 @@ def dispatch_best_police_station(user_lat, user_lon, required_resources: List[st
     # 5. Extract output
     chosen_row = closest_5[closest_5['name'] == decision.unit_name].iloc[0]
     
+    eta_minutes = max(1, round(chosen_row['distance_km'] / 40 * 60))
     return {
         "unit_name": decision.unit_name,
+        "latitude": float(chosen_row['latitude']),
+        "longitude": float(chosen_row['longitude']),
         "distance_km": round(chosen_row['distance_km'], 2),
+        "estimated_eta_minutes": eta_minutes,
         "matched_capabilities": chosen_row['capabilities'],
         "ai_reasoning": decision.reasoning
     }
@@ -361,6 +371,10 @@ async def triage_and_dispatch(request: EmergencyRequest):
         
         # Clean up the output to send back to Taha's frontend
         return {
+            "user_location": {
+                "latitude": request.latitude,
+                "longitude": request.longitude
+            },
             "triage_analysis": final_state["triage_result"],
             "dispatched_units": {
                 "medical": final_state["medical_dispatch"],
