@@ -7,6 +7,9 @@ let map, userMarker, markersGroup, routeLines = [];
 let etaIntervals = [];
 let recognition = null;
 
+let currentFileBase64 = null;
+let currentFileMimeType = null;
+
 // =============================================
 // 1. MAP INITIALIZATION
 // =============================================
@@ -196,11 +199,17 @@ async function sendDispatch() {
       <p>AI is analyzing the crisis and computing optimal dispatch vectors...</p>
     </div>`;
 
+  const payload = { latitude: lat, longitude: lon, description: description };
+  if (currentFileBase64) {
+    payload.file_data = currentFileBase64;
+    payload.file_type = currentFileMimeType;
+  }
+
   try {
     const response = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ latitude: lat, longitude: lon, description })
+      body: JSON.stringify(payload)
     });
 
     if (!response.ok) throw new Error(`Server Error: ${response.status}`);
@@ -402,10 +411,48 @@ function startAllCountdowns() {
 }
 
 // =============================================
-// 7. INITIALIZATION
+// 7. FILE HANDLING
 // =============================================
+function handleFileUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const dataUrl = e.target.result;
+    currentFileMimeType = dataUrl.split(';')[0].split(':')[1];
+    currentFileBase64 = dataUrl.split(',')[1];
+    
+    document.getElementById('fileName').textContent = file.name;
+    document.getElementById('filePreview').style.display = 'flex';
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeFile() {
+  document.getElementById('fileUpload').value = '';
+  currentFileBase64 = null;
+  currentFileMimeType = null;
+  document.getElementById('filePreview').style.display = 'none';
+}
+
+// =============================================
+// 8. INITIALIZATION
+// =============================================
+async function requestMicPermission() {
+  try {
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(track => track.stop());
+    }
+  } catch (err) {
+    console.warn('Microphone permission denied:', err);
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   initMap();
   detectLocation();
   initSpeechRecognition();
+  requestMicPermission();
 });

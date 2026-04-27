@@ -149,6 +149,8 @@ body {
 }
 
 .gps-coords input {
+  width: 100%;
+  min-width: 0;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: 8px;
@@ -195,9 +197,13 @@ body {
   color: var(--text-muted);
 }
 
-/* Mic Button */
-.mic-btn {
+/* Action Buttons */
+.action-buttons {
   position: absolute; bottom: 12px; right: 12px;
+  display: flex; gap: 8px;
+}
+
+.mic-btn, .attach-btn {
   width: 40px; height: 40px;
   border-radius: 50%;
   background: var(--bg-secondary);
@@ -210,7 +216,7 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
-.mic-btn:hover {
+.mic-btn:hover, .attach-btn:hover {
   background: var(--accent-red);
   color: white;
   border-color: var(--accent-red);
@@ -221,6 +227,25 @@ body {
   color: white;
   border-color: var(--accent-red);
   animation: pulse-glow 1s infinite;
+}
+
+.file-preview {
+  margin-top: 8px;
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.remove-file-btn {
+  background: none; border: none;
+  color: var(--accent-red);
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: bold;
 }
 
 /* Dispatch Button */

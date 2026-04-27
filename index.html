@@ -58,7 +58,15 @@
           id="description"
           placeholder="Describe the emergency situation in detail...&#10;&#10;Example: Massive grease fire in the main kitchen of the Grand Hotel. Three chefs have severe burns. Smoke filling the building."
         ></textarea>
-        <button class="mic-btn" id="micBtn" onclick="toggleMic()" title="Voice Input (Speech-to-Text)">🎙️</button>
+        <div class="action-buttons">
+          <input type="file" id="fileUpload" style="display: none;" accept="image/*,application/pdf,text/plain" onchange="handleFileUpload(event)">
+          <button class="attach-btn" id="attachBtn" onclick="document.getElementById('fileUpload').click()" title="Attach File/Image">📎</button>
+          <button class="mic-btn" id="micBtn" onclick="toggleMic()" title="Voice Input (Speech-to-Text)">🎙️</button>
+        </div>
+      </div>
+      <div id="filePreview" class="file-preview" style="display: none;">
+        <span id="fileName"></span>
+        <button class="remove-file-btn" onclick="removeFile()" title="Remove file">✕</button>
       </div>
     </div>
 

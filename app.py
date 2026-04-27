@@ -12,6 +12,7 @@ from langchain_xai import ChatXAI
 from langchain_groq import ChatGroq
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
+from langchain_core.messages import HumanMessage
 from typing import TypedDict, Optional
 from langgraph.graph import StateGraph, START, END
 load_dotenv()
@@ -109,6 +110,8 @@ class EmergencyRequest(BaseModel):
     latitude: float = Field(..., description="GPS Latitude from the frontend device")
     longitude: float = Field(..., description="GPS Longitude from the frontend device")
     description: str = Field(..., description="The user's frantic text or transcribed voice report")
+    file_data: Optional[str] = Field(None, description="Base64 encoded file data")
+    file_type: Optional[str] = Field(None, description="MIME type of the file")
 class LocationMetadata(BaseModel):
     latitude: float = Field(description="The GPS latitude.")
     longitude: float = Field(description="The GPS longitude.")
@@ -272,7 +275,37 @@ def dispatch_best_police_station(user_lat, user_lon, required_resources: List[st
         "ai_reasoning": decision.reasoning
     }
 # ==========================================
-# 5. FASTAPI ROUTES
+# 5. VISION & FILE PROCESSING
+# ==========================================
+def extract_file_info(base64_data: str, mime_type: str) -> str:
+    # Handle text files natively without LLM if possible
+    if mime_type.startswith("text/"):
+        import base64
+        try:
+            return base64.b64decode(base64_data).decode('utf-8')
+        except:
+            pass
+
+    # Use Gemini Flash for image analysis
+    if mime_type.startswith("image/"):
+        vision_llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0)
+        message = HumanMessage(
+            content=[
+                {"type": "text", "text": "Analyze this uploaded image from an emergency reporter. Describe any injuries, hazards, location details, or critical information visible in the image. Keep it concise."},
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:{mime_type};base64,{base64_data}"}
+                }
+            ]
+        )
+        response = vision_llm.invoke([message])
+        return response.content
+
+    # For other files (PDFs, etc.) where inline base64 isn't supported by the prompt
+    return f"A file of type {mime_type} was uploaded. (Full extraction not available for this type)"
+
+# ==========================================
+# 6. FASTAPI ROUTES
 # ==========================================
 app = FastAPI(title="Hospitality Triage & Dispatch API", version="1.0")
 app.add_middleware(
@@ -355,11 +388,19 @@ dispatch_graph = workflow.compile()
 @app.post("/api/v1/triage")
 async def triage_and_dispatch(request: EmergencyRequest):
     try:
+        user_report = request.description
+        if request.file_data and request.file_type:
+            try:
+                extracted_info = extract_file_info(request.file_data, request.file_type)
+                user_report += f"\n\n[SYSTEM ADDED - Information extracted from uploaded file: {extracted_info}]"
+            except Exception as e:
+                print(f"Error extracting info from file: {e}")
+                
         # Initialize the starting state
         initial_state = {
             "latitude": request.latitude,
             "longitude": request.longitude,
-            "user_report": request.description,
+            "user_report": user_report,
             "triage_result": None,
             "medical_dispatch": None,
             "fire_dispatch": None,
