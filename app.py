@@ -178,9 +178,7 @@ class HospitalMatch(BaseModel):
     hospital_name: str
     distance_km: float
     matched_capabilities: str
-    latitude: float
-    longitude: float
-
+    ai_reasoning: str
 # New Output Schema: Combines the AI's triage with the Geospatial Match
 class DispatchResponse(BaseModel):
     triage_analysis: EmergencyPayload
@@ -234,25 +232,10 @@ def dispatch_best_hospital(user_lat, user_lon, required_resources: List[str]) ->
     # 2. FILTER: Grab the 5 absolute closest hospitals
     closest_5 = df_hospitals.nsmallest(5, 'distance_km')
     
-    # EDGE CASE: User is stranded on a highway and NO hospitals are within 25km.
-    if local_hospitals.empty:
-        # Fallback: Just grab the 5 absolute closest ones, regardless of distance
-        local_hospitals = df_hospitals.nsmallest(5, 'distance_km')
-
-    # 3. VECTOR SECOND: Convert the local slice to LangChain Documents
-    docs = []
-    for _, row in local_hospitals.iterrows():
-        docs.append(
-            Document(
-                page_content=row['capabilities'], 
-                metadata={
-                    "name": row['name'],
-                    "distance": row['distance_km'],
-                    "latitude": row['latitude'],
-                    "longitude": row['longitude']
-                }
-            )
-        )
+    # 3. FORMAT FOR THE LLM: Turn the Pandas rows into a clean string
+    hospitals_text = ""
+    for index, row in closest_5.iterrows():
+        hospitals_text += f"- Name: {row['name']} | Distance: {row['distance_km']:.2f} km | Stated Capabilities: {row['capabilities']}\n"
     
     # 4. AGENTIC MATCHMAKING: Ask Gemini to figure out the best fit
     decision = matchmaker_chain.invoke({
