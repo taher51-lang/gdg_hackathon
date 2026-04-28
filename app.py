@@ -520,7 +520,25 @@ async def login(request: LoginRequest):
     if not actual_name:
         raise HTTPException(status_code=401, detail=f"Station '{request.station_name}' not found in our {request.agency_type} registry.")
     
-    return {"status": "success", "station_name": actual_name, "agency_type": request.agency_type}
+    # Get coordinates for the station
+    lat, lon = 23.0225, 72.5714 # Default Ahmedabad
+    if request.agency_type == "Police" and not df_police.empty:
+        m = df_police[df_police['name'] == actual_name]
+        if not m.empty: lat, lon = m.iloc[0]['latitude'], m.iloc[0]['longitude']
+    elif request.agency_type == "Fire" and not df_fire.empty:
+        m = df_fire[df_fire['name'] == actual_name]
+        if not m.empty: lat, lon = m.iloc[0]['latitude'], m.iloc[0]['longitude']
+    elif request.agency_type == "Hospital" and not df_hospitals.empty:
+        m = df_hospitals[df_hospitals['name'] == actual_name]
+        if not m.empty: lat, lon = m.iloc[0]['latitude'], m.iloc[0]['longitude']
+
+    return {
+        "status": "success", 
+        "station_name": actual_name, 
+        "agency_type": request.agency_type,
+        "latitude": float(lat),
+        "longitude": float(lon)
+    }
 
 @app.get("/api/v1/incidents/{station_name}")
 async def get_station_incidents(station_name: str):
@@ -551,6 +569,18 @@ async def get_station_incidents(station_name: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/v1/incidents/{incident_id}/resolve")
+async def resolve_incident(incident_id: str, station_name: str):
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute('UPDATE incidents SET status = "RESOLVED" WHERE id = ?', (incident_id,))
+        conn.commit()
+        conn.close()
+        return {"status": "success", "message": f"Incident {incident_id} resolved"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/v1/upload")
 async def upload_media(file: UploadFile = File(...)):
     try:
@@ -573,3 +603,27 @@ def health_check():
 def get_incidents():
     """Returns all processed incidents for the monitoring dashboard."""
     return {"incidents": incident_history}
+
+@app.get("/api/v1/all_incidents")
+async def get_all_incidents():
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM incidents ORDER BY timestamp DESC')
+        rows = cursor.fetchall()
+        conn.close()
+        
+        incidents = []
+        for row in rows:
+            inc = dict(row)
+            incidents.append({
+                "id": inc["id"],
+                "timestamp": inc["timestamp"],
+                "user_location": {"latitude": inc["latitude"], "longitude": inc["longitude"]},
+                "status": inc["status"],
+                "triage_analysis": json.loads(inc["triage_json"]) if inc["triage_json"] else {},
+            })
+        return incidents
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

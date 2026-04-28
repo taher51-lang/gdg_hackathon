@@ -239,7 +239,6 @@ async function sendDispatch() {
     description: description,
     media_url: mediaUrl 
   };
-
   try {
     const response = await fetch(API_URL, {
       method: "POST",
