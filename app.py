@@ -40,7 +40,7 @@ def init_db():
         cursor = conn.cursor()
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS incidents (
-                id TEXT PRIMARY KEY,
+                id TEXT,
                 incident_type TEXT,
                 description TEXT,
                 latitude DOUBLE PRECISION,
@@ -51,7 +51,8 @@ def init_db():
                 status TEXT,
                 timestamp TEXT,
                 triage_json TEXT,
-                dispatch_json TEXT
+                dispatch_json TEXT,
+                PRIMARY KEY (id, assigned_station_name)
             )
         ''')
         conn.commit()
@@ -483,7 +484,7 @@ async def triage_and_dispatch(request: EmergencyRequest):
                     cursor.execute('''
                         INSERT INTO incidents (id, incident_type, description, latitude, longitude, media_url, assigned_agency, assigned_station_name, status, timestamp, triage_json, dispatch_json)
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        ON CONFLICT (id) DO NOTHING
+                        ON CONFLICT (id, assigned_station_name) DO NOTHING
                     ''', (
                         response_payload["id"],
                         response_payload["triage_analysis"]["crisis_category"],
